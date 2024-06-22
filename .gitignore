@@ -1,3 +1,6 @@
 /node_modules
 .env
 /server
+/fastapi/cache
+/fastapi/__pycache__
+/fastapi/github

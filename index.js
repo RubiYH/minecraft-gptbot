@@ -1,9 +1,8 @@
 const bot = require("./lib/mineflayer");
 const mineflayer = require("mineflayer");
-const checkSyntax = require("./modules/checkSyntax");
-const { queryGPT } = require("./lib/openai");
+const { checkSyntax } = require("./modules/checkSyntax");
+const { query } = require("./lib/query");
 const { showAction } = require("./modules/actionBar");
-// const { queryClaude } = require("./lib/claude");
 
 bot.once("login", () => {
   console.log("Logged In.");
@@ -11,7 +10,7 @@ bot.once("login", () => {
 
 //history
 let chatHistory = [];
-const MAX_CHAT_HISTORY = 6;
+const MAX_CHAT_HISTORY = 8;
 
 bot.on("messagestr", async (message, position, jsonMap) => {
   const filterMessage = message.match(/^<(.+?)> (.+)$/);
@@ -40,10 +39,14 @@ bot.on("messagestr", async (message, position, jsonMap) => {
     actionbar.startThinking();
 
     //ask AI
-    const jsonResult = await queryGPT(message, chatHistory);
-    // const jsonResult = await queryClaude(message,chatHistory);
+    const jsonResult = await query(message, chatHistory);
 
     console.log(jsonResult);
+    if (jsonResult?.status === "error") {
+      bot.chat("Error while running the task.");
+      actionbar.stopThinking();
+      return;
+    }
 
     //maximum chat history
     if (chatHistory.length > 2 * (MAX_CHAT_HISTORY - 1)) {
@@ -71,7 +74,7 @@ bot.on("messagestr", async (message, position, jsonMap) => {
     async function runCode(code = jsonResult.content) {
       try {
         eval(
-          `async function _run() { try { ${code} } catch (e) { bot.chat(\`Oops, error! \${e}\`); const _final = await checkSyntax(jsonResult.content, e); runCode(JSON.parse(_final).content); } }; _run();`
+          `async function _run() { try { ${code} } catch (e) { const _final = await checkSyntax(jsonResult.content, e); _final !== undefined ? runCode(JSON.parse(_final).content) : undefined; } }; _run();`
         ); //execute the code
         console.log(`Chat histories: ${chatHistory.length / 2}`);
         actionbar.stopThinking();
@@ -82,7 +85,7 @@ bot.on("messagestr", async (message, position, jsonMap) => {
 
         //check syntax using ChatGPT
         const final = await checkSyntax(jsonResult.content, e);
-        runCode(JSON.parse(final).content);
+        final !== undefined ? runCode(JSON.parse(final).content) : undefined;
       }
     }
 
