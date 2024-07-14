@@ -13,6 +13,18 @@ let chatHistory = [];
 const MAX_CHAT_HISTORY = 8;
 
 bot.on("messagestr", async (message, position, jsonMap) => {
+  if (!message.startsWith(`<${bot.username}>`)) {
+    chatHistory.push({
+      role: "user",
+      content: [
+        {
+          type: "text",
+          text: message,
+        },
+      ],
+    });
+  }
+
   const filterMessage = message.match(/^<(.+?)> (.+)$/);
   if (!filterMessage) return;
 
@@ -49,24 +61,15 @@ bot.on("messagestr", async (message, position, jsonMap) => {
     }
 
     //maximum chat history
-    if (chatHistory.length > 2 * (MAX_CHAT_HISTORY - 1)) {
+    if (chatHistory.length > MAX_CHAT_HISTORY) {
       chatHistory.splice(0, 2);
     }
 
-    //add to chat history
-    chatHistory = [
-      ...chatHistory,
-      {
-        role: "user",
-        content: [
-          {
-            type: "text",
-            text: message,
-          },
-        ],
-      },
-      { role: "assistant", content: [{ type: "text", text: jsonResult?.content }] },
-    ];
+    //add AI response to chat history
+    chatHistory.push({
+      role: "assistant",
+      content: [{ type: "text", text: `<${bot.username}> ${jsonResult?.content}` }],
+    });
 
     actionbar.show({ text: "Executing the task" });
 
@@ -76,7 +79,7 @@ bot.on("messagestr", async (message, position, jsonMap) => {
         eval(
           `async function _run() { try { ${code} } catch (e) { const _final = await checkSyntax(jsonResult.content, e); _final !== undefined ? runCode(JSON.parse(_final).content) : undefined; } }; _run();`
         ); //execute the code
-        console.log(`Chat histories: ${chatHistory.length / 2}`);
+        console.log(`Chat histories: ${chatHistory.length}`);
         actionbar.stopThinking();
       } catch (e) {
         console.log(e);
@@ -84,7 +87,7 @@ bot.on("messagestr", async (message, position, jsonMap) => {
         bot.chat("Uh oh, it seems an error occurred while executing the task :( I'll try again.");
 
         //check syntax using ChatGPT
-        const final = await checkSyntax(jsonResult.content, e);
+        const final = await checkSyntax(jsonResult.content, e, actionbar);
         final !== undefined ? runCode(JSON.parse(final).content) : undefined;
       }
     }

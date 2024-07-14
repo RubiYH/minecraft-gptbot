@@ -103,16 +103,33 @@ retriever_tool = create_retriever_tool(
 from langchain_core.prompts import PromptTemplate
 
 prompt = PromptTemplate.from_template(
-    """You are an expert Minecraft bot named 'gptBot' who operates by self-coding, and you are currently in a Minecraft 1.20.4 server playing with a player. Your mission to assist the player by answering very kindly and perform actions using node.js Mineflayer codes directly when the player requested you to do something.
-When simply just replying in chat, you must use `bot.chat('...')`. To perform specific actions, write codes that purely performs the requested actions right away without unnecessary conditions. Keep the rules below when coding;
-# Rules
+    """You are an expert Minecraft bot named 'gptBot' who operates by self-coding, and you are currently in a Minecraft 1.20.4 server playing with a player. Your mission to assist the player by answering very kindly and perform actions using node.js Mineflayer codes directly when the player requests you to do something.
+
+Question:
+{question}
+
+You must choose the type of your task by understanding the purpose and the given context, and must follow the format from the list below when responding;
+
+# Type: Chat
+## Purpose: To interact with qchat messages, normally to answer the question or simply respond to the user in text. Also used when performing vanilla Minecraft commands. When calculations or code expressions are needed you must use <action> instead.
+## Format: <chat>{{message or Minecraft command goes here.}}</chat>
+## Context:
+    bot.chat('{{Your chat will go here. Respond with what should be written here. Only answer this line of the code.}}')
+
+# Type: Action
+## Purpose: To perform specific actions in-game such as to walk, fly, break blocks, hold items, etc. that are just everything except chat including interacting with Minecraft in-game.
+## Format: <action>{{You must provide node.js Mineflayer code here.}}</action>
+## Context:
+    bot.on('messagestr', async (message, position, jsonMap) => {{
+        {{Your code will go here. Respond with what should be written here. Only answer this part of the code.}}
+    }});
+## Rules:
 - Before writing codes, please require libraries except 'mineflayer' in order to avoid node.js errors.
   you can also include other libraries if necessary.
-- You can also simply use in-game Minecraft commands wrapped in `bot.chat('..')` since you are an Op.
-- Don't start the code with bot event listeners such as `bot.on('...')`, `bot.once('...')` unless needed. These may require additional interactions for the player to run your codes which is not desired.
-- Don't include the code that creates a bot.
+- Don't start the code with bot event listeners.
+- Don't include the code to create a bot.
 - Use async/await methods when coding.
-- Always brief on your process of the task in chat.
+- Always brief about your task in chat.
 - Specify the target according to the request whether it's the player's username, some entities, blocks, etc.
 - When multiple tasks are provided, think about what to do first and next based on Chain-of-Thought prompt technique and write codes step by step.
 - When answering the codes, do not wrap the codes in code block or do not say extra explanations. Just only give raw codes as a result.
@@ -121,11 +138,12 @@ When simply just replying in chat, you must use `bot.chat('...')`. To perform sp
 Previous chat history:
 {chat_history}
 
-Question:
-{question}
-
 References:
 {context}
+
+Response format:
+Only response with "<type of your task>{{Response goes here.}}</type of your task>". Don't start with "Here is my response: ..."
+
 """
 )
 
@@ -148,6 +166,10 @@ def query(input: str, history: list = []):
             model="gpt-3.5-turbo",
             temperature=0.2,
         ),
+        sonnet=ChatAnthropic(
+            model="claude-3-5-sonnet-20240620",
+            temperature=0
+        )
     )
 
     rag_chain = (
@@ -157,7 +179,7 @@ def query(input: str, history: list = []):
         | StrOutputParser()
     )
     
-    response = rag_chain.with_config(configurable={"llm": "gpt4o"}).invoke(input)
+    response = rag_chain.with_config(configurable={"llm": "opus"}).invoke(input)
     
     print(f"Response: {response}")
     return response

@@ -2,9 +2,10 @@ const { openai } = require("../lib/openai");
 
 let retries = 0;
 
-const checkSyntax = async (code, error) => {
+const checkSyntax = async (code, error, actionbar) => {
   if (retries === 2) {
     retries = 0;
+    actionbar?.stopThinking();
     return console.log(`\nRetry failed. Stopped the task.`);
   }
 
